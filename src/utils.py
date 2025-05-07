@@ -8,8 +8,18 @@ from supabase import create_client, Client
 from urllib.parse import urlparse
 import openai
 
-# Load OpenAI API key for embeddings
-openai.api_key = os.getenv("OPENAI_API_KEY")
+from google import genai
+from google.genai import types
+
+from dotenv import load_dotenv
+load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY must be set in environment variables")
+
+# Load Gemini API key
+gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 
 def get_supabase_client() -> Client:
     """
@@ -28,45 +38,46 @@ def get_supabase_client() -> Client:
 
 def create_embeddings_batch(texts: List[str]) -> List[List[float]]:
     """
-    Create embeddings for multiple texts in a single API call.
-    
+    Create embeddings for multiple texts in a single API call using Gemini client.
+
     Args:
         texts: List of texts to create embeddings for
-        
+
     Returns:
         List of embeddings (each embedding is a list of floats)
     """
     if not texts:
         return []
-        
+
     try:
-        response = openai.embeddings.create(
-            model="text-embedding-3-small", # Hardcoding embedding model for now, will change this later to be more dynamic
-            input=texts
+        result = gemini_client.models.embed_content(
+            model="models/text-embedding-004",
+            contents=texts,
+            config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT")
         )
-        return [item.embedding for item in response.data]
+        return [embedding.values for embedding in result.embeddings]
     except Exception as e:
         print(f"Error creating batch embeddings: {e}")
         # Return empty embeddings if there's an error
-        return [[0.0] * 1536 for _ in range(len(texts))]
+        return [[0.0] * 768 for _ in range(len(texts))]
 
 def create_embedding(text: str) -> List[float]:
     """
-    Create an embedding for a single text using OpenAI's API.
-    
+    Create an embedding for a single text using Gemini client.
+
     Args:
         text: Text to create an embedding for
-        
+
     Returns:
         List of floats representing the embedding
     """
     try:
         embeddings = create_embeddings_batch([text])
-        return embeddings[0] if embeddings else [0.0] * 1536
+        return embeddings[0] if embeddings else [0.0] * 768
     except Exception as e:
         print(f"Error creating embedding: {e}")
         # Return empty embedding if there's an error
-        return [0.0] * 1536
+        return [0.0] * 768
 
 def add_documents_to_supabase(
     client: Client, 
@@ -183,3 +194,15 @@ def search_documents(
     except Exception as e:
         print(f"Error searching documents: {e}")
         return []
+
+if __name__ == "__main__":
+    # Basic test for the updated functions
+    test_texts = ["What is the meaning of life?", "How does AI work?"]
+    test_single_text = "Explain quantum computing."
+
+    print("Batch Embeddings:")
+    print(create_embeddings_batch(test_texts))
+
+    print("Single Embedding:")
+    print(create_embedding(test_single_text))
+    breakpoint()

@@ -1,21 +1,13 @@
-FROM python:3.12-slim
+FROM python:3.13-slim
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-ARG PORT=8051
+COPY / /app
 
 WORKDIR /app
 
-# Install uv
-RUN pip install uv
+EXPOSE 2121
 
-# Copy the MCP server files
-COPY . .
-
-# Install packages directly to the system (no virtual environment)
-# Combining commands to reduce Docker layers
 RUN uv pip install --system -e . && \
     crawl4ai-setup
-
-EXPOSE ${PORT}
-
 # Command to run the MCP server
 CMD ["uv", "run", "src/crawl4ai_mcp.py"]

@@ -8,7 +8,7 @@ create table crawled_pages (
     chunk_number integer not null,
     content text not null,  -- Added content column
     metadata jsonb not null default '{}'::jsonb,  -- Added metadata column
-    embedding vector(1536),  -- OpenAI embeddings are 1536 dimensions
+    embedding vector(768),  -- OpenAI embeddings are 768 dimensions
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
     
     -- Add a unique constraint to prevent duplicate chunks for the same URL
@@ -25,7 +25,7 @@ CREATE INDEX idx_crawled_pages_source ON crawled_pages ((metadata->>'source'));
 
 -- Create a function to search for documentation chunks
 create or replace function match_crawled_pages (
-  query_embedding vector(1536),
+  query_embedding vector(768),
   match_count int default 10,
   filter jsonb DEFAULT '{}'::jsonb
 ) returns table (
